@@ -48,14 +48,18 @@ impl LinkAdapter {
                         // run per session.
                         let beat = 0.0;
                         let quantum = 1.0;
-                        info!(stamp, "Setting beat");
-                        self.update_state(|state| state.force_beat_at_time(beat, stamp, quantum));
+                        // The MIDI driver's timestamp is not on the Link clock,
+                        // so we use the time at which the event arrived.
+                        let time = self.link.clock_micros();
+                        info!(stamp, time, "Setting beat");
+                        self.update_state(|state| state.force_beat_at_time(beat, time as u64, quantum));
                     },
                     // BPM
                     0x34 => {
                         let bpm = vel.as_int() + 50;
+                        let time = self.link.clock_micros();
                         info!(bpm, "Setting BPM");
-                        self.update_state(|state| state.set_tempo(bpm as f64, stamp as i64));
+                        self.update_state(|state| state.set_tempo(bpm as f64, time));
                     },
                     _ => debug!(?event, "Ignoring MIDI note event"),
                 }
