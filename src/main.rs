@@ -4,11 +4,13 @@ compile_error!("MIDILink currently supports Unix-like platforms and Windows");
 mod adapter;
 
 use std::{
+    io,
     sync::{
         atomic::{AtomicBool, Ordering},
-        Arc,
+        mpsc, Arc,
     },
     thread,
+    time::Instant,
 };
 
 use anyhow::{anyhow, Context, Result};
@@ -25,6 +27,12 @@ struct Args {
     /// The name of the virtual MIDI ports, or the existing Windows MIDI port to connect to.
     #[arg(short, long, default_value = "Link")]
     name: String,
+
+    /// The number of beats per bar in the Link session. Press Enter in this
+    /// terminal on the first beat of a bar to align it. Playback restarts
+    /// automatically begin a new bar.
+    #[arg(short, long, default_value_t = 4)]
+    quantum: u32,
 }
 
 fn handle_midi_input(stamp: u64, raw: &[u8], adapter: &mut LinkAdapter) {
@@ -130,7 +138,20 @@ fn main() -> Result<()> {
         .init();
 
     let args = Args::parse();
-    let adapter = LinkAdapter::new();
+    let (downbeat_tx, downbeat_rx) = mpsc::channel();
+    let adapter = LinkAdapter::new(args.quantum, downbeat_rx);
+
+    thread::spawn(move || {
+        let stdin = io::stdin();
+        let mut line = String::new();
+        while matches!(stdin.read_line(&mut line), Ok(n) if n > 0) {
+            line.clear();
+            info!("Marked downbeat");
+            if downbeat_tx.send(Instant::now()).is_err() {
+                break;
+            }
+        }
+    });
 
     #[cfg(unix)]
     info!(name = %args.name, "Creating virtual MIDI ports");

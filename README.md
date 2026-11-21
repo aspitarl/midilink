@@ -5,6 +5,14 @@
 
 Mixxx MIDI to Ableton Link adapter. Exports tempo and phase from Mixxx to apps and devices implementing the Ableton Link protocol (e.g. lighting, instruments, DAWs).
 
+## Bars and downbeats
+
+Mixxx only sends beat pulses, not bar positions. MIDILink therefore counts beats
+and exposes a Link quantum of 4 by default (change it with `--quantum`, e.g.
+`--quantum 8` for phrases, or `--quantum 1` for single beats). The first beat
+after playback starts or restarts is treated as the downbeat. To realign while
+playing, press Enter in the MIDILink terminal on the first beat of a bar.
+
 ## Windows
 
 MIDILink can use an existing MIDI port on Windows. Create a port in
